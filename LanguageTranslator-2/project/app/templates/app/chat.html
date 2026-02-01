@@ -1,0 +1,74 @@
+{% extends 'app/base.html' %}
+{% block title %}Chat Translator{% endblock %}
+
+{% block content %}
+<h3 class="text-center mb-4">Ramu ↔ Somu Chat Translator</h3>
+
+<div class="row">
+    <!-- PERSON A -->
+    <div class="col-md-6">
+        <div class="card shadow mb-3">
+            <div class="card-body">
+                <h5 class="text-center">Person A</h5>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="sender" value="A">
+
+                    <label class="form-label">Language</label>
+                    <select class="form-select mb-2" name="source" required>
+                        {% for code, name in languages.items %}
+                            <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <textarea class="form-control mb-2" name="text"
+                              placeholder="Type message..." required></textarea>
+
+                    <button class="btn btn-primary w-100">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERSON B -->
+    <div class="col-md-6">
+        <div class="card shadow mb-3">
+            <div class="card-body">
+                <h5 class="text-center">Person B</h5>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="sender" value="B">
+
+                    <label class="form-label">Language</label>
+                    <select class="form-select mb-2" name="source" required>
+                        {% for code, name in languages.items %}
+                            <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <textarea class="form-control mb-2" name="text"
+                              placeholder="Type message..." required></textarea>
+
+                    <button class="btn btn-success w-100">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if chat %}
+<hr>
+<h4>Conversation</h4>
+<ul class="list-group">
+    {% for msg in chat %}
+        <li class="list-group-item">
+            <strong>Person {{ msg.sender }}:</strong>
+            {{ msg.text }}
+        </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}

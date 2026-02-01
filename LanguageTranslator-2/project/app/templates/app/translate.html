@@ -1,0 +1,215 @@
+{% extends 'app/base.html' %}
+{% block title %}Translate{% endblock %}
+
+{% block content %}
+<style>
+/* ---------- PAGE BACKGROUND ---------- */
+.translate-bg {
+    min-height:100vh;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+}
+
+/* FLOATING WORDS */
+.word {
+    position:absolute;
+    font-size:2rem;
+    color:rgba(255,255,255,0.2);
+    animation:float 18s linear infinite;
+}
+.word:nth-child(1){left:10%;animation-delay:0s;}
+.word:nth-child(2){left:30%;animation-delay:4s;}
+.word:nth-child(3){left:50%;animation-delay:8s;}
+.word:nth-child(4){left:70%;animation-delay:12s;}
+.word:nth-child(5){left:85%;animation-delay:16s;}
+
+@keyframes float {
+    0%{top:100%;opacity:0;}
+    10%{opacity:1;}
+    100%{top:-10%;opacity:0;}
+}
+
+/* ---------- CARD ---------- */
+.translator-card {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(12px);
+    border-radius:20px;
+    padding:30px;
+    max-width:600px;
+    width:100%;
+    color:white;
+    z-index:2;
+    box-shadow:0 15px 40px rgba(0,0,0,0.3);
+}
+
+/* INPUTS */
+textarea, select {
+    border-radius:12px !important;
+    border:none !important;
+}
+
+/* BUTTONS */
+.btn-primary {
+    background: linear-gradient(45deg,#00c6ff,#0072ff);
+    border:none;
+    border-radius:12px;
+    font-weight:bold;
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg,#f7971e,#ffd200);
+    border:none;
+    color:black;
+    border-radius:12px;
+    transition:0.3s;
+}
+
+/* LISTENING STATE */
+.btn-listening {
+    background: linear-gradient(45deg,#ff6b6b,#ff8787) !important;
+    color:white !important;
+}
+
+/* OUTPUT */
+#outputText {
+    border-radius:12px;
+    font-size:1.1rem;
+}
+</style>
+
+<div class="translate-bg">
+
+    <!-- FLOATING WORDS -->
+    <div class="word">Hello</div>
+    <div class="word">வணக்கம்</div>
+    <div class="word">مرحبا</div>
+    <div class="word">Bonjour</div>
+    <div class="word">你好</div>
+
+    <div class="translator-card">
+        <h3 class="text-center mb-4">🌍 Language Translator</h3>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <textarea
+                id="inputText"
+                class="form-control mb-3"
+                name="text"
+                rows="4"
+                placeholder="Enter text or use voice..."
+                required>{{ request.POST.text }}</textarea>
+
+            <!-- MIC BUTTON -->
+            <button type="button"
+                id="micBtn"
+                class="btn btn-secondary mb-3 w-100"
+                onclick="startVoice()">
+                🎤 Speak
+            </button>
+
+            <div class="row mb-3">
+                <div class="col">
+                    <select name="source" id="source" class="form-select" required>
+                        {% for code, name in languages.items %}
+                        <option value="{{ code }}"
+                            {% if request.POST.source == code %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col">
+                    <select name="target" id="target" class="form-select" required>
+                        {% for code, name in languages.items %}
+                        <option value="{{ code }}"
+                            {% if request.POST.target == code %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary w-100">Translate</button>
+        </form>
+
+        {% if translated_text %}
+        <hr>
+        <h5>Translated Text:</h5>
+        <div id="outputText" class="alert alert-success">
+            {{ translated_text }}
+        </div>
+        <button type="button" class="btn btn-success w-100" onclick="speakOutput()">
+            🔊 Speak Output
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let listeningInterval = null;
+
+function startVoice() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        alert("Speech recognition not supported. Use Google Chrome.");
+        return;
+    }
+
+    const micBtn = document.getElementById("micBtn");
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = document.getElementById("source").value;
+
+    // UI: listening state
+    micBtn.classList.add("btn-listening");
+    micBtn.disabled = true;
+
+    let dots = 1;
+    micBtn.innerText = "LISTENING.";
+
+    listeningInterval = setInterval(() => {
+        dots = dots % 3 + 1;
+        micBtn.innerText = "LISTENING" + ".".repeat(dots);
+    }, 500);
+
+    recognition.start();
+
+    recognition.onresult = function (event) {
+        document.getElementById("inputText").value =
+            event.results[0][0].transcript;
+    };
+
+    recognition.onend = function () {
+        clearInterval(listeningInterval);
+        micBtn.classList.remove("btn-listening");
+        micBtn.disabled = false;
+        micBtn.innerText = "🎤 Speak";
+    };
+}
+
+function speakOutput() {
+    const text = document.getElementById("outputText").innerText;
+    const targetLang = document.getElementById("target").value;
+
+    const ttsLangMap = {
+        'en':'en-US','ta':'ta-IN','hi':'hi-IN','fr':'fr-FR',
+        'es':'es-ES','de':'de-DE','ja':'ja-JP','ko':'ko-KR',
+        'zh-CN':'zh-CN','ar':'ar-SA'
+    };
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = ttsLangMap[targetLang] || 'en-US';
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+}
+</script>
+
+{% endblock %}
